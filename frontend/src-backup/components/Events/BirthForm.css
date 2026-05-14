@@ -1,0 +1,151 @@
+.birth-form-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.form-section {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #3498db;
+}
+
+.form-section h4 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-group {
+  margin-bottom: 1rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.checkbox-help {
+  margin: 0.5rem 0 0 1.5rem;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.account-fields {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 6px;
+  border: 1px solid #e1e8ed;
+  margin-top: 1rem;
+}
+
+.generate-username-btn {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.generate-username-btn:hover {
+  background: #7f8c8d;
+}
+
+.readonly-field {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+  color: #6c757d;
+}
+
+.account-notice {
+  background: #e3f2fd;
+  padding: 1rem;
+  border-radius: 6px;
+  border-left: 4px solid #2196f3;
+  margin-top: 1rem;
+}
+
+.account-notice h5 {
+  margin: 0 0 0.5rem 0;
+  color: #1976d2;
+}
+
+.account-notice ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #555;
+}
+
+.account-notice li {
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
+}
+
+.medical-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .form-section {
+    padding: 1rem;
+  }
+  
+  .medical-info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .account-fields {
+    padding: 1rem;
+  }
+}
+
+/* Enhanced form styles */
+.form-group {
+  position: relative;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.required-field::after {
+  content: " *";
+  color: #e74c3c;
+}
+
+/* Parent info section specific styles */
+.parent-info-section {
+  background: #fff3e0;
+  border-left-color: #ff9800;
+}
+
+.medical-info-section {
+  background: #e8f5e8;
+  border-left-color: #4caf50;
+}
+
+.child-account-section {
+  background: #e3f2fd;
+  border-left-color: #2196f3;
+}

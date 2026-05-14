@@ -1,0 +1,246 @@
+/* CITIZEN REGISTRATION REVIEW SPECIFIC STYLES */
+
+.no-citizens-container {
+  background: white;
+  border-radius: 16px;
+  padding: 60px 40px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 2px dashed #e0e0e0;
+}
+
+.no-citizens-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.6;
+}
+
+.refresh-link {
+  background: none;
+  border: none;
+  color: #3498db;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.refresh-link:hover {
+  color: #2980b9;
+}
+
+.kebele-info {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 30px;
+  text-align: left;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.kebele-info h5 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 10px;
+}
+
+/* Citizen Card Styles */
+.citizen-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.citizen-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.citizen-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.citizen-identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.citizen-icon {
+  font-size: 32px;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.citizen-identity h4 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.citizen-id {
+  margin: 5px 0 0 0;
+  color: #7f8c8d;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.citizen-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.registration-date {
+  background: white;
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.kebele-badge {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Citizen Card Body */
+.citizen-card-body {
+  padding: 24px;
+}
+
+.citizen-basic-info {
+  margin-bottom: 20px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  background: #f8fafc;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.citizen-details {
+  background: #f1f5f9;
+  padding: 24px;
+  border-radius: 12px;
+  margin: 20px 0;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.family-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.family-member {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-name {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.member-relation {
+  font-size: 13px;
+  color: #718096;
+  text-transform: capitalize;
+}
+
+.member-id {
+  font-size: 12px;
+  color: #4a5568;
+  font-family: 'Courier New', monospace;
+}
+
+.verification-info {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border-left: 4px solid #3498db;
+}
+
+.status-text {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.status-text.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-text.approved {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-text.rejected {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Stats Badge */
+.stats-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  max-width: 200px;
+}
+
+.stats-badge .count {
+  font-size: 36px;
+  font-weight: 800;
+  color: #1a237e;
+}
+
+.stats-badge .label {
+  font-size: 14px;
+  color: #718096;
+  text-align: center;
+}

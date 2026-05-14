@@ -1,0 +1,865 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-toastify';
+import './CitizenEventReview.css';
+
+const CitizenEventReview = ({ onCitizenReviewed }) => {
+  // STATE FOR CITIZEN REGISTRATIONS (NOT EVENTS)
+  const [citizens, setCitizens] = useState([]);
+  const [groupedCitizens, setGroupedCitizens] = useState({ pending: [], approved: [], rejected: [] });
+  const [loading, setLoading] = useState(true);
+  const [reviewingCitizen, setReviewingCitizen] = useState(null);
+  const [reviewingEvent, setReviewingEvent] = useState(null);
+  const [reviewComments, setReviewComments] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('approved');
+  const [showDetails, setShowDetails] = useState({});
+
+  const { API_URL, currentUser } = useAuth();
+
+  // Immediate authentication check
+  console.log('=== IMMEDIATE AUTH CHECK ===');
+  console.log('Current user from context:', currentUser);
+  console.log('User role:', currentUser?.role);
+  console.log('Token from localStorage:', localStorage.getItem('token') ? 'EXISTS' : 'MISSING');
+  console.log('=== END IMMEDIATE CHECK ===');
+
+  // Test button for manual auth check
+  const testAuth = () => {
+    console.log('=== MANUAL AUTH TEST ===');
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    console.log('Token:', token ? 'EXISTS' : 'MISSING');
+    console.log('User:', user ? 'EXISTS' : 'MISSING');
+    console.log('Parsed user:', user ? JSON.parse(user) : 'NONE');
+    console.log('Current user from context:', currentUser);
+    console.log('=== END MANUAL TEST ===');
+  };
+
+  // Test token validity with API call
+  const testTokenValidity = async () => {
+    const token = localStorage.getItem('token');
+    console.log('=== TOKEN VALIDITY TEST ===');
+    console.log('Testing token with API call...');
+
+    try {
+      const response = await axios.get(`${API_URL_FIXED}/auth/verify-token`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      console.log('Token is VALID:', response.data);
+      toast.success('Token is valid!');
+    } catch (error) {
+      console.log('Token is INVALID:', error.response?.data || error.message);
+      toast.error('Token is invalid - please log in again');
+    }
+    console.log('=== END TOKEN TEST ===');
+  };
+
+  // Clear authentication and redirect to login
+  const handleLogout = () => {
+    console.log('=== LOGGING OUT ===');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    axios.defaults.headers.common['Authorization'] = '';
+    toast.info('Logged out. Redirecting to login...');
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 1500);
+  };
+
+  // Temporary fix: Use direct API_URL
+  const API_URL_FIXED = 'http://localhost:5000/api';
+
+  // LOAD CITIZENS FOR REVIEW
+  useEffect(() => {
+    fetchCitizensForReview();
+  }, []);
+
+  const fetchCitizensForReview = async () => {
+    try {
+      setLoading(true);
+
+      // Debug: Check token and user
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+      console.log('=== AUTHENTICATION DEBUG ===');
+      console.log('Token exists:', !!token);
+      console.log('Token length:', token?.length || 0);
+      console.log('Token starts with Bearer:', token?.startsWith('Bearer ') || false);
+      console.log('Token value (first 20 chars):', token?.substring(0, 20));
+      console.log('User exists:', !!user);
+      console.log('Current user from context:', currentUser);
+      console.log('User role:', currentUser?.role);
+      console.log('=== END AUTH DEBUG ===');
+
+      // CRITICAL FIX: Validate token before proceeding
+      if (!token || token.length < 10) {
+        console.error('Invalid or missing token!');
+        toast.error('Please log in to access this page');
+        setCitizens([]);
+        setLoading(false);
+        return;
+      }
+
+      // Set axios headers globally and validate
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('Set global Authorization header:', `Bearer ${token.substring(0, 20)}...`);
+      console.log('Current axios headers:', axios.defaults.headers.common);
+
+      const kebeleIdentifier = currentUser?.location?.kebeleName || currentUser?.location?.kebele || 'me';
+
+      // Call endpoint for ALL citizens in this kebele (grouped)
+      console.log('Making request to:', `${API_URL_FIXED}/auth/citizens/kebele/${encodeURIComponent(kebeleIdentifier)}`);
+
+      const response = await axios.get(`${API_URL_FIXED}/auth/citizens/kebele/${encodeURIComponent(kebeleIdentifier)}`);
+
+      if (response.data.status === 'success') {
+        const grouped = response.data.data.grouped;
+        if (grouped) {
+          const pending = grouped.pending || [];
+          const approved = grouped.approved || [];
+          const rejected = grouped.rejected || [];
+          setGroupedCitizens({ pending, approved, rejected });
+          setCitizens(pending);
+          console.log(`Found citizens grouped: pending=${pending.length}, approved=${approved.length}, rejected=${rejected.length}`);
+        } else {
+          const allCitizens = response.data.data.citizens || [];
+          setGroupedCitizens({ pending: allCitizens, approved: [], rejected: [] });
+          setCitizens(allCitizens);
+          console.log(`Found ${allCitizens.length} citizens for review`);
+        }
+      } else {
+        setCitizens([]);
+        setGroupedCitizens({ pending: [], approved: [], rejected: [] });
+        toast.error('Failed to load citizens for review');
+      }
+    } catch (error) {
+      console.error('Error fetching citizens:', error);
+
+      // Handle 403 Forbidden specifically
+      if (error.response && error.response.status === 403) {
+        console.log('=== 403 FORBIDDEN ERROR ===');
+        console.log('Error response:', error.response.data);
+        console.log('Current user:', currentUser);
+        console.log('Token exists:', !!localStorage.getItem('token'));
+        console.log('=== END 403 DEBUG ===');
+
+        // Show user-friendly message for 403 with login option
+        toast.error(
+          <div>
+            <p>Authentication required. Please log in again.</p>
+            <button
+              onClick={() => window.location.href = '/login'}
+              style={{
+                marginTop: '8px',
+                padding: '4px 12px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Go to Login
+            </button>
+          </div>,
+          { autoClose: false }
+        );
+        setCitizens([]); // Show empty state instead of error
+      } else {
+        toast.error('Error loading citizens for review');
+        setCitizens([]);
+        setGroupedCitizens({ pending: [], approved: [], rejected: [] });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // HANDLE CITIZEN REVIEW (APPROVE/REJECT)
+  const handleCitizenReview = async (citizenId) => {
+    if (!reviewComments.trim() && selectedStatus === 'rejected') {
+      toast.error('Please provide reasons for rejection');
+      return;
+    }
+
+    try {
+      // Call correct endpoint for reviewing citizens
+      await axios.patch(
+        `${API_URL_FIXED}/auth/citizens/${citizenId}/review`,
+        {
+          status: selectedStatus,
+          comments: reviewComments
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      toast.success(`Citizen registration ${selectedStatus === 'approved' ? 'approved' : 'rejected'}`);
+
+      // Reset form
+      setReviewingCitizen(null);
+      setReviewComments('');
+      setSelectedStatus('approved');
+
+      // Refresh list
+      fetchCitizensForReview();
+
+      // Notify parent component
+      if (onCitizenReviewed) {
+        onCitizenReviewed();
+      }
+    } catch (error) {
+      console.error('Review error:', error);
+      toast.error(error.response?.data?.message || 'Error reviewing citizen');
+    }
+  };
+
+  const toggleDetails = (citizenId) => {
+    setShowDetails(prev => ({
+      ...prev,
+      [citizenId]: !prev[citizenId]
+    }));
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not provided';
+    return new Date(dateString).toLocaleDateString('en-ET', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getVerificationIcon = (status) => {
+    switch (status) {
+      case 'approved': return '✅';
+      case 'rejected': return '❌';
+      case 'pending': return '⏳';
+      default: return '📋';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading citizen registrations for review...</p>
+      </div>
+    );
+  }
+
+  const pendingCitizens = groupedCitizens?.pending || [];
+  const approvedCitizens = groupedCitizens?.approved || [];
+  const rejectedCitizens = groupedCitizens?.rejected || [];
+
+  if (pendingCitizens.length === 0 && approvedCitizens.length === 0 && rejectedCitizens.length === 0) {
+    return (
+      <div className="no-citizens-container">
+        <div className="no-citizens-icon">👥</div>
+        <h3>No Citizen Registrations to Review</h3>
+
+        <p>There are currently no citizen registration submissions waiting for your review.</p>
+        <p className="subtext">
+          Citizens will appear here when they register through the system.
+          You can also <button onClick={fetchCitizensForReview} className="refresh-link">refresh</button> to check for new submissions.
+        </p>
+        <div className="kebele-info">
+          <h5>Your Kebele Information:</h5>
+          <p><strong>Kebele:</strong> {currentUser?.location?.kebeleName || currentUser?.location?.kebele || 'Not assigned'}</p>
+          <p>Only citizens from your assigned kebele will appear here.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="citizen-event-review">
+      <div className="review-header">
+        <h3>👥 Citizen Registration Review</h3>
+
+        <p className="subtitle">
+          Review and verify citizen registrations from your kebele.
+          <span className="highlight"> Approved citizens can then submit vital events.</span>
+        </p>
+        <div className="stats-badge">
+          <span className="count">{pendingCitizens.length}</span>
+          <span className="label">Pending Registrations</span>
+        </div>
+        <div className="stats-badge" style={{ marginLeft: '10px' }}>
+          <span className="count">{approvedCitizens.length}</span>
+          <span className="label">Approved</span>
+        </div>
+        <div className="stats-badge" style={{ marginLeft: '10px' }}>
+          <span className="count">{rejectedCitizens.length}</span>
+          <span className="label">Rejected</span>
+        </div>
+
+        <button onClick={testAuth} style={{ marginLeft: '10px', padding: '5px 10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>
+          🧪 Test Auth
+        </button>
+        <button onClick={testTokenValidity} style={{ marginLeft: '5px', padding: '5px 10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}>
+          🔍 Test Token
+        </button>
+        <button onClick={handleLogout} style={{ marginLeft: '5px', padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}>
+          🚪 Logout
+        </button>
+      </div>
+
+      <div className="citizens-list">
+        <h4 style={{ marginTop: '10px' }}>Pending</h4>
+        {pendingCitizens.map(citizen => (
+          <div key={citizen._id} className="citizen-card">
+
+            <div className="citizen-card-header">
+              <div className="citizen-identity">
+                {citizen.personalInfo?.photo?.url ? (
+                  <img 
+                    src={`http://localhost:5000${citizen.personalInfo.photo.url}`}
+                    alt={`${citizen.personalInfo?.firstName} ${citizen.personalInfo?.lastName}`}
+                    className="citizen-photo"
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      marginRight: '15px'
+                    }}
+                  />
+                ) : (
+                  <span className="citizen-icon">👤</span>
+                )}
+                <div>
+                  <h4>{citizen.personalInfo?.firstName} {citizen.personalInfo?.lastName}</h4>
+                  <p className="citizen-id">ID: {citizen.personalInfo?.idNumber || 'Not provided'}</p>
+                </div>
+              </div>
+              <div className="citizen-meta">
+                <span className="registration-date">
+                  📅 Registered: {formatDate(citizen.createdAt)}
+                </span>
+                <span className="kebele-badge">
+                  📍 {citizen.location?.kebeleName || citizen.location?.kebele}
+                </span>
+              </div>
+            </div>
+
+            <div className="citizen-card-body">
+              <div className="citizen-basic-info">
+                <div className="info-grid">
+                  <div className="info-item">
+                    <label>Phone:</label>
+                    <span>{citizen.personalInfo?.phone || 'Not provided'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Email:</label>
+                    <span>{citizen.personalInfo?.email || 'Not provided'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Date of Birth:</label>
+                    <span>{formatDate(citizen.personalInfo?.dateOfBirth)}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Gender:</label>
+                    <span>{citizen.personalInfo?.gender || 'Not specified'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Occupation:</label>
+                    <span>{citizen.personalInfo?.occupation || 'Not specified'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Marital Status:</label>
+                    <span>{citizen.personalInfo?.maritalStatus || 'Not specified'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => toggleDetails(citizen._id)}
+                className="details-toggle-btn"
+              >
+                {showDetails[citizen._id] ? 'Hide Family Details' : 'Show Family Details'}
+              </button>
+
+              {showDetails[citizen._id] && (
+                <div className="citizen-details">
+                  <h5>📍 Location Details:</h5>
+                  <div className="details-grid">
+                    <div className="detail-item">
+                      <label>Region:</label>
+                      <span>{citizen.location?.regionName || citizen.location?.region}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Zone:</label>
+                      <span>{citizen.location?.zoneName || citizen.location?.zone || 'Not specified'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Woreda:</label>
+                      <span>{citizen.location?.woredaName || citizen.location?.woreda || 'Not specified'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Kebele:</label>
+                      <span>{citizen.location?.kebeleName || citizen.location?.kebele}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>House Number:</label>
+                      <span>{citizen.location?.houseNumber || 'Not specified'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Street:</label>
+                      <span>{citizen.location?.street || 'Not specified'}</span>
+                    </div>
+                  </div>
+
+                  {citizen.familyMembers && citizen.familyMembers.length > 0 && (
+                    <>
+                      <h5>👨‍👩‍👧‍👦 Family Members ({citizen.familyMembers.length}):</h5>
+                      <div className="family-members">
+                        {citizen.familyMembers.map((member, index) => (
+                          <div key={index} className="family-member">
+                            <span className="member-name">{member.name}</span>
+                            <span className="member-relation">{member.relationship}</span>
+                            {member.idNumber && (
+                              <span className="member-id">ID: {member.idNumber}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="verification-info">
+                    <h5>📋 Verification Information:</h5>
+                    <p><strong>Status:</strong> <span className={`status-text ${citizen.status}`}>{citizen.status}</span></p>
+                    <p><strong>Verification Level:</strong> {citizen.verificationLevel || 'unverified'}</p>
+                    {citizen.createdAt && (
+                      <p><strong>Registered:</strong> {formatDate(citizen.createdAt)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {reviewingCitizen === citizen._id ? (
+                <div className="review-form">
+
+                  <div className="form-group">
+                    <label>Select Action:</label>
+                    <div className="action-buttons">
+                      <button
+                        className={`action-btn ${selectedStatus === 'approved' ? 'selected' : ''}`}
+                        onClick={() => setSelectedStatus('approved')}
+                      >
+                        ✅ Approve Citizen Registration
+                      </button>
+                      <button
+                        className={`action-btn ${selectedStatus === 'rejected' ? 'selected' : ''}`}
+                        onClick={() => setSelectedStatus('rejected')}
+                      >
+                        ❌ Reject Citizen Registration
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Review Comments:</label>
+                    <textarea
+                      value={reviewComments}
+                      onChange={(e) => setReviewComments(e.target.value)}
+                      placeholder={
+                        selectedStatus === 'approved'
+                          ? 'Add optional verification notes...'
+                          : 'Provide clear reasons for rejection (missing documents, incorrect information, etc.)...'
+                      }
+                      rows="4"
+                      required={selectedStatus === 'rejected'}
+                    />
+                    {selectedStatus === 'rejected' && (
+                      <small className="required-note">* Comments are required when rejecting a citizen</small>
+                    )}
+                  </div>
+
+                  <div className="review-action-buttons">
+                    <button
+                      onClick={() => handleCitizenReview(citizen._id)}
+                      className="submit-review-btn"
+                      disabled={selectedStatus === 'rejected' && !reviewComments.trim()}
+                    >
+                      {selectedStatus === 'approved' ? 'Approve Citizen' : 'Reject Registration'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setReviewingCitizen(null);
+                        setReviewComments('');
+                        setSelectedStatus('approved');
+                      }}
+                      className="cancel-review-btn"
+                    >
+                      Cancel Review
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="review-actions">
+                  <button
+                    onClick={() => setReviewingCitizen(citizen._id)}
+                    className="start-review-btn"
+                  >
+                    📝 Review This Citizen
+                  </button>
+                  <button
+                    onClick={() => toggleDetails(citizen._id)}
+                    className="view-details-btn"
+                  >
+                    {showDetails[citizen._id] ? 'Hide Details' : 'View Details'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+
+        <h4 style={{ marginTop: '20px' }}>Approved</h4>
+        {approvedCitizens.length === 0 ? (
+          <div className="no-citizens-container" style={{ padding: '10px' }}>
+            <p>No approved citizens</p>
+          </div>
+        ) : (
+          approvedCitizens.map(citizen => (
+            <div key={citizen._id} className="citizen-card">
+              <div className="citizen-card-header">
+                <div className="citizen-identity">
+                  {citizen.personalInfo?.photo?.url ? (
+                    <img 
+                      src={`http://localhost:5000${citizen.personalInfo.photo.url}`}
+                      alt={`${citizen.personalInfo?.firstName} ${citizen.personalInfo?.lastName}`}
+                      className="citizen-photo"
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        marginRight: '15px'
+                      }}
+                    />
+                  ) : (
+                    <span className="citizen-icon">👤</span>
+                  )}
+                  <div>
+                    <h4>{citizen.personalInfo?.firstName} {citizen.personalInfo?.lastName}</h4>
+                    <p className="citizen-id">ID: {citizen.personalInfo?.idNumber || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="citizen-meta">
+                  <span className="registration-date">
+                    📅 Registered: {formatDate(citizen.createdAt)}
+                  </span>
+                  <span className="kebele-badge">
+                    📍 {citizen.location?.kebeleName || citizen.location?.kebele}
+                  </span>
+                </div>
+              </div>
+
+              <div className="citizen-card-body">
+                <div className="citizen-basic-info">
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <label>Phone:</label>
+                      <span>{citizen.personalInfo?.phone || 'Not provided'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Email:</label>
+                      <span>{citizen.personalInfo?.email || 'Not provided'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Date of Birth:</label>
+                      <span>{formatDate(citizen.personalInfo?.dateOfBirth)}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Gender:</label>
+                      <span>{citizen.personalInfo?.gender || 'Not specified'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Occupation:</label>
+                      <span>{citizen.personalInfo?.occupation || 'Not specified'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Marital Status:</label>
+                      <span>{citizen.personalInfo?.maritalStatus || 'Not specified'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => toggleDetails(citizen._id)}
+                  className="details-toggle-btn"
+                >
+                  {showDetails[citizen._id] ? 'Hide Family Details' : 'Show Family Details'}
+                </button>
+
+                {showDetails[citizen._id] && (
+                  <div className="citizen-details">
+                    <h5>📍 Location Details:</h5>
+                    <div className="details-grid">
+                      <div className="detail-item">
+                        <label>Region:</label>
+                        <span>{citizen.location?.regionName || citizen.location?.region}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>Zone:</label>
+                        <span>{citizen.location?.zoneName || citizen.location?.zone || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>Woreda:</label>
+                        <span>{citizen.location?.woredaName || citizen.location?.woreda || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>Kebele:</label>
+                        <span>{citizen.location?.kebeleName || citizen.location?.kebele}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>House Number:</label>
+                        <span>{citizen.location?.houseNumber || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>Street:</label>
+                        <span>{citizen.location?.street || 'Not specified'}</span>
+                      </div>
+                    </div>
+
+                    {citizen.familyMembers && citizen.familyMembers.length > 0 && (
+                      <>
+                        <h5>👨‍👩‍👧‍👦 Family Members ({citizen.familyMembers.length}):</h5>
+                        <div className="family-members">
+                          {citizen.familyMembers.map((member, index) => (
+                            <div key={index} className="family-member">
+                              <span className="member-name">{member.name}</span>
+                              <span className="member-relation">{member.relationship}</span>
+                              {member.idNumber && (
+                                <span className="member-id">ID: {member.idNumber}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="verification-info">
+                      <h5>📋 Verification Information:</h5>
+                      <p><strong>Status:</strong> <span className={`status-text ${citizen.status}`}>{citizen.status}</span></p>
+                      <p><strong>Verification Level:</strong> {citizen.verificationLevel || 'unverified'}</p>
+                      {citizen.createdAt && (
+                        <p><strong>Registered:</strong> {formatDate(citizen.createdAt)}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="review-actions">
+                  <button
+                    onClick={() => toggleDetails(citizen._id)}
+                    className="view-details-btn"
+                  >
+                    {showDetails[citizen._id] ? 'Hide Details' : 'View Details'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+
+        <h4 style={{ marginTop: '20px' }}>Rejected</h4>
+        {rejectedCitizens.length === 0 ? (
+          <div className="no-citizens-container" style={{ padding: '10px' }}>
+            <p>No rejected citizens</p>
+          </div>
+        ) : (
+          rejectedCitizens.map(citizen => (
+            <div key={citizen._id} className="citizen-card">
+              <div className="citizen-card-header">
+                <div className="citizen-identity">
+                  {citizen.personalInfo?.photo?.url ? (
+                    <img 
+                      src={`http://localhost:5000${citizen.personalInfo.photo.url}`}
+                      alt={`${citizen.personalInfo?.firstName} ${citizen.personalInfo?.lastName}`}
+                      className="citizen-photo"
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        marginRight: '15px'
+                      }}
+                    />
+                  ) : (
+                    <span className="citizen-icon">👤</span>
+                  )}
+                  <div>
+                    <h4>{citizen.personalInfo?.firstName} {citizen.personalInfo?.lastName}</h4>
+                    <p className="citizen-id">ID: {citizen.personalInfo?.idNumber || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="citizen-meta">
+                  <span className="registration-date">
+                    📅 Registered: {formatDate(citizen.createdAt)}
+                  </span>
+                  <span className="kebele-badge">
+                    📍 {citizen.location?.kebeleName || citizen.location?.kebele}
+                  </span>
+                </div>
+              </div>
+
+              <div className="citizen-card-body">
+                <div className="citizen-basic-info">
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <label>Phone:</label>
+                      <span>{citizen.personalInfo?.phone || 'Not provided'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Email:</label>
+                      <span>{citizen.personalInfo?.email || 'Not provided'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Date of Birth:</label>
+                      <span>{formatDate(citizen.personalInfo?.dateOfBirth)}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Gender:</label>
+                      <span>{citizen.personalInfo?.gender || 'Not specified'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Occupation:</label>
+                      <span>{citizen.personalInfo?.occupation || 'Not specified'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Marital Status:</label>
+                      <span>{citizen.personalInfo?.maritalStatus || 'Not specified'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => toggleDetails(citizen._id)}
+                  className="details-toggle-btn"
+                >
+                  {showDetails[citizen._id] ? 'Hide Family Details' : 'Show Family Details'}
+                </button>
+
+                {showDetails[citizen._id] && (
+                  <div className="citizen-details">
+                    <h5>📍 Location Details:</h5>
+                    <div className="details-grid">
+                      <div className="detail-item">
+                        <label>Region:</label>
+                        <span>{citizen.location?.regionName || citizen.location?.region}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>Zone:</label>
+                        <span>{citizen.location?.zoneName || citizen.location?.zone || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>Woreda:</label>
+                        <span>{citizen.location?.woredaName || citizen.location?.woreda || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>Kebele:</label>
+                        <span>{citizen.location?.kebeleName || citizen.location?.kebele}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>House Number:</label>
+                        <span>{citizen.location?.houseNumber || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <label>Street:</label>
+                        <span>{citizen.location?.street || 'Not specified'}</span>
+                      </div>
+                    </div>
+
+                    {citizen.familyMembers && citizen.familyMembers.length > 0 && (
+                      <>
+                        <h5>👨‍👩‍👧‍👦 Family Members ({citizen.familyMembers.length}):</h5>
+                        <div className="family-members">
+                          {citizen.familyMembers.map((member, index) => (
+                            <div key={index} className="family-member">
+                              <span className="member-name">{member.name}</span>
+                              <span className="member-relation">{member.relationship}</span>
+                              {member.idNumber && (
+                                <span className="member-id">ID: {member.idNumber}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="verification-info">
+                      <h5>📋 Verification Information:</h5>
+                      <p><strong>Status:</strong> <span className={`status-text ${citizen.status}`}>{citizen.status}</span></p>
+                      <p><strong>Verification Level:</strong> {citizen.verificationLevel || 'unverified'}</p>
+                      {citizen.createdAt && (
+                        <p><strong>Registered:</strong> {formatDate(citizen.createdAt)}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="review-actions">
+                  <button
+                    onClick={() => toggleDetails(citizen._id)}
+                    className="view-details-btn"
+                  >
+                    {showDetails[citizen._id] ? 'Hide Details' : 'View Details'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="review-guidelines">
+        <h4>📋 Citizen Registration Review Guidelines</h4>
+        <div className="guidelines-content">
+          <div className="guideline">
+            <h5>✅ When to Approve a Citizen:</h5>
+            <ul>
+              <li>All personal information is complete and accurate</li>
+              <li>3×4 profile photo is clear and identifiable</li>
+              <li>ID number is valid and matches other records</li>
+              <li>Location information matches your kebele jurisdiction</li>
+              <li>No discrepancies in family information</li>
+              <li>Required documents (ID card, etc.) are provided</li>
+            </ul>
+          </div>
+          <div className="guideline">
+            <h5>❌ When to Reject a Citizen:</h5>
+            <ul>
+              <li>Missing or unclear 3×4 identification photo</li>
+              <li>Invalid or incorrect ID number</li>
+              <li>Citizen is not actually residing in your kebele</li>
+              <li>Suspected fraudulent information</li>
+              <li>Missing required supporting documents</li>
+              <li>Family information is contradictory or incomplete</li>
+            </ul>
+          </div>
+          <div className="guideline">
+            <h5>⚠️ Important Notes:</h5>
+            <ul>
+              <li>Approved citizens can immediately start submitting vital events</li>
+              <li>Rejected citizens will receive your comments for correction</li>
+              <li>Keep records of all approvals/rejections for audit purposes</li>
+              <li>Verify against existing kebele records when possible</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CitizenEventReview;

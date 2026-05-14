@@ -1,0 +1,796 @@
+import React, { useState, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
+import LocationSelector from '../Common/LocationSelector';
+
+const RegisterCitizen = () => {
+  const navigate = useNavigate();
+  const { API_URL } = useAuth();
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    // Personal Information
+    username: '',
+    password: '',
+    confirmPassword: '',
+    personalInfo: {
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    maritalStatus: '',
+    occupation: '',
+    educationLevel: '',
+    idNumber: '',
+     },
+    // Location Information
+    
+    location: {
+      region: '',
+      zone: '',
+      woreda: '',
+      kebele: ''
+    } 
+  });
+  
+  const [familyMembers, setFamilyMembers] = useState([]);
+  const [familyMember, setFamilyMember] = useState({
+    name: '',
+    relationship: '',
+    idNumber: '',
+    idType: ''
+  });
+
+  const [loading, setLoading] = useState(false);
+  
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [idCardPhoto, setIdCardPhoto] = useState(null);
+  const [idCardPreview, setIdCardPreview] = useState(null);
+  const [otherDocs, setOtherDocs] = useState([]);
+  const fileInputRef = useRef(null);
+  const idCardInputRef = useRef(null);
+  const docsInputRef = useRef(null);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // REMOVE client-side validation - backend will handle it
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Photo size should be less than 5MB');
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please upload an image file (JPEG, PNG)');
+        return;
+      }
+      
+      setProfilePhoto(file);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      
+      toast.success('Profile photo uploaded');
+    }
+  };
+
+  const handleIdCardUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('ID card photo size should be less than 5MB');
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please upload an image file');
+        return;
+      }
+
+      setIdCardPhoto(file);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIdCardPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      
+      toast.success('ID card uploaded');
+    }
+  };
+
+  const handleOtherDocsUpload = (e) => {
+    const files = Array.from(e.target.files);
+    
+    const validFiles = files.filter(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 5MB limit`);
+        return false;
+      }
+      
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      if (!validTypes.includes(file.type)) {
+        toast.error(`${file.name} must be JPG, PNG, or PDF`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    setOtherDocs(prev => [...prev, ...validFiles]);
+    if (validFiles.length > 0) {
+      toast.success(`${validFiles.length} document(s) uploaded`);
+    }
+  };
+
+  const removeDocument = (index) => {
+    setOtherDocs(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addFamilyMember = () => {
+    if (!familyMember.name || !familyMember.relationship) {
+      toast.error('Name and relationship are required');
+      return;
+    }
+    
+    setFamilyMembers(prev => [...prev, { ...familyMember }]);
+    
+    setFamilyMember({
+      name: '',
+      relationship: '',
+      idNumber: '',
+      idType: ''
+    });
+    
+    toast.success('Family member added');
+  };
+
+  const removeFamilyMember = (index) => {
+    setFamilyMembers(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleLocationChange = (locationData) => {
+    console.log('Location changed:', locationData);
+    setFormData(prev => ({
+      ...prev,
+      location: locationData
+    }));    
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+      console.log('=== DEBUG: Form Data Structure ===');
+  console.log('Full formData:', formData);
+  console.log('formData.personalInfo:', formData.personalInfo);
+  console.log('formData.personalInfo?.firstName:', formData.personalInfo?.firstName);
+  console.log('formData.personalInfo?.lastName:', formData.personalInfo?.lastName);
+  console.log('Type of formData.personalInfo:', typeof formData.personalInfo);
+  console.log('=== END DEBUG ===');
+  // Validate passwords
+  if (formData.password !== formData.confirmPassword) {
+    toast.error('Passwords do not match');
+    return;
+  }
+  
+  // Validate required location fields
+    if (!formData.location.region || !formData.location.kebele) {
+      toast.error('Please select your complete location (Region and Kebele)');
+      return;
+    }
+
+  if (formData.password.length < 6) {
+    toast.error('Password must be at least 6 characters');
+    return;
+  }
+
+  // Validate required personal fields
+  const requiredPersonalFields = ['firstName', 'lastName', 'phone', 'gender', 'dateOfBirth', 'idNumber'];
+  const missingFields = requiredPersonalFields.filter(field => !formData.personalInfo[field]);
+  
+  if (missingFields.length > 0) {
+    toast.error(`Please fill all required personal information`);
+    return;
+  }
+
+  // Validate profile photo
+  if (!profilePhoto) {
+    toast.error('Please upload a profile photo for identification');
+    return;
+  }
+
+  setLoading(true);
+  
+    const userData = {
+      username: formData.username,
+      password: formData.password,
+      personalInfo: formData.personalInfo,
+      location: formData.location
+    };
+      console.log('Submitting citizen data:', userData);
+
+          // For testing - simulate registration
+    toast.success('Citizen registration successful! (Simulated)');
+    
+    // const result = await registerCitizen(userData);
+
+    setLoading(false);
+
+    try {
+      const formDataToSend = new FormData();
+      
+      // Add all form fields
+      formDataToSend.append('firstName', formData.personalInfo.firstName);
+      formDataToSend.append('lastName', formData.personalInfo.lastName);
+      formDataToSend.append('email', formData.personalInfo.email);
+      formDataToSend.append('phone', formData.personalInfo.phone);
+      formDataToSend.append('dateOfBirth', formData.personalInfo.dateOfBirth);
+      formDataToSend.append('gender', formData.personalInfo.gender);
+      formDataToSend.append('maritalStatus', formData.personalInfo.maritalStatus);
+      formDataToSend.append('occupation', formData.personalInfo.occupation);
+      formDataToSend.append('educationLevel', formData.personalInfo.educationLevel);
+      formDataToSend.append('idNumber', formData.personalInfo.idNumber);
+      formDataToSend.append('username', formData.username || formData.phone);
+
+      // Location fields
+// Create the location object as expected by backend
+const locationObj = formData.location || {};
+formDataToSend.append('location', JSON.stringify({
+  region: locationObj.region || '',
+  regionName: locationObj.regionName || '',
+  zone: locationObj.zone || '',
+  zoneName: locationObj.zoneName || '',
+  woreda: locationObj.woreda || '',
+  woredaName: locationObj.woredaName || '',
+  kebele: locationObj.kebele || '',
+  kebeleName: locationObj.kebeleName || ''
+})); 
+      // Account
+      formDataToSend.append('password', formData.password);
+      
+      // Family members as JSON
+      if (familyMembers.length > 0) {
+        formDataToSend.append('familyMembers', JSON.stringify(familyMembers));
+      } else {
+        formDataToSend.append('familyMembers', '[]');
+      }
+      
+      // Add profile photo
+      formDataToSend.append('profilePhoto', profilePhoto);
+      
+      // Add ID card if provided
+      if (idCardPhoto) {
+        formDataToSend.append('idCard', idCardPhoto);
+      }
+      
+      // Add other documents
+      otherDocs.forEach((doc, index) => {
+        formDataToSend.append('documents', doc);
+      });
+
+
+          // ✅ Debug: Log FormData contents before sending
+    console.log('FormData entries:');
+    for (let [key, value] of formDataToSend.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}:`, {
+          name: value.name,
+          type: value.type,
+          size: value.size + ' bytes'
+        });
+      } else {
+        console.log(`${key}:`, value);
+      }
+    }
+          // Calculate total size
+    let totalSize = 0;
+    for (let value of formDataToSend.values()) {
+      if (value instanceof File) {
+        totalSize += value.size;
+      }
+    }
+    console.log(`Total upload size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+  
+    
+
+      // ✅ CORRECT ENDPOINT FOR YOUR BACKEND
+      const response = await axios.post(
+        `${API_URL}/auth/register-citizen`, 
+        formDataToSend,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+           timeout: 60000, // 60 seconds timeout
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`Upload progress: ${percentCompleted}%`);
+        }
+        }
+      );
+
+      console.log('Registration response:', response.data);
+
+      if (response.data.success) {
+        toast.success('Registration submitted successfully! Your account is pending Kebele review.');
+        
+        // Reset form
+        setFormData({
+          username: '',
+          password: '',
+          confirmPassword: '',
+          personalInfo: {
+            firstName: '',
+            lastName: '',
+            email: '',
+            phone: '',
+            dateOfBirth: '',
+            gender: '',
+            maritalStatus: '',
+            occupation: '',
+            educationLevel: '',
+            idNumber: '',
+          },
+          location: {
+            region: '',
+            zone: '',
+            woreda: '',
+            kebele: ''
+          }
+        });
+        setFamilyMembers([]);
+        setProfilePhoto(null);
+        setPhotoPreview(null);
+        setIdCardPhoto(null);
+        setIdCardPreview(null);
+        setOtherDocs([]);
+        
+        // Navigate to login
+        navigate('/login', { 
+          state: { 
+            message: 'Registration submitted. Please wait for Kebele verification.' 
+          } 
+        });
+      } else {
+        toast.error(response.data.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+       if (error.code === 'ECONNABORTED') {
+      toast.error('Request timeout. Please try again.');
+    } else if (error.message && error.message.includes('Network Error')) {
+      toast.error('Network error. Please check your connection.');
+    }
+      // Detailed error handling
+      if (error.response) {
+        const { status, data } = error.response;
+        
+        // Handle 3x4 photo validation error
+        if (status === 400 && data.message && data.message.includes('3:4')) {
+          toast.error(
+            <div>
+              <strong>Photo Validation Failed:</strong><br/>
+              {data.message}<br/>
+              {data.details && `Dimensions: ${data.details.actualDimensions}`}
+            </div>
+          );
+        } 
+        else if (status === 400) {
+          toast.error(data.message || 'Please check your information and try again.');
+        } 
+        else if (status === 409) {
+          toast.error('User with this phone or email already exists');
+        } 
+        else if (status === 413) {
+          toast.error('File(s) too large. Please reduce file sizes.');
+        } 
+        else {
+          toast.error(`Error ${status}: ${data.message || 'Registration failed'}`);
+        }
+      } else if (error.request) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('An error occurred. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    };
+    
+  };
+
+  return (
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h2>Citizen Registration</h2>
+          <p className="auth-subtitle">
+            <span style={{color: '#e74c3c', fontWeight: 'bold', display: 'block'}}>
+              📍 Registration will be sent to your Kebele for review
+            </span>
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* Personal Information */}
+          <div className="form-section">
+            <h4>👤 Personal Information</h4>
+            
+            {/* Photo Upload */}
+            <div className="photo-upload-section">
+              <div className="photo-preview-container">
+                <div className="photo-preview">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Profile Preview" />
+                  ) : (
+                    <div className="photo-placeholder">
+                      <span>Profile Photo</span>
+                      <small>Required (3×4 recommended)</small>
+                    </div>
+                  )
+                }
+    <label>Username: *</label>
+    <input
+      type="text"
+      name="username"
+      value={formData.username}
+      onChange={handleChange}
+      required
+      placeholder="Choose a username"
+    />
+
+            {/* Form Fields */}
+            <div className="form-row">
+              <div className="form-group">
+                <label>First Name: *</label>
+                <input
+                  type="text"
+                  name="personalInfo.firstName"
+                  value={formData.personalInfo.firstName}
+                  onChange={handleChange}
+                  required
+                  placeholder="Your first name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Last Name: *</label>
+                <input
+                  type="text"
+                  name="personalInfo.lastName"
+                  value={formData.personalInfo.lastName}
+                  onChange={handleChange}
+                  required
+                  placeholder="Your last name"
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Date of Birth: *</label>
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  value={formData.dateOfBirth}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Gender: *</label>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>ID Number: *</label>
+                <input
+                  type="text"
+                  name="idNumber"
+                  value={formData.idNumber}
+                  onChange={handleChange}
+                  required
+                  placeholder="National ID number"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Marital Status: *</label>
+                <select
+                  name="maritalStatus"
+                  value={formData.maritalStatus}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Status</option>
+                  <option value="single">Single</option>
+                  <option value="married">Married</option>
+                  <option value="divorced">Divorced</option>
+                  <option value="widowed">Widowed</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Occupation: *</label>
+                <input
+                  type="text"
+                  name="occupation"
+                  value={formData.occupation}
+                  onChange={handleChange}
+                  required
+                  placeholder="Your occupation"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Education Level: *</label>
+                <select
+                  name="educationLevel"
+                  value={formData.educationLevel}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Education Level</option>
+                  <option value="none">No Formal Education</option>
+                  <option value="primary">Primary School</option>
+                  <option value="secondary">Secondary School</option>
+                  <option value="diploma">Diploma</option>
+                  <option value="bachelor">Bachelor's Degree</option>
+                  <option value="masters">Master's Degree</option>
+                  <option value="phd">PhD</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Email:</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="email@example.com"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Phone: *</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                  placeholder="0912345678"
+                />
+              </div>
+            </div>
+          </div>
+
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Date of Birth: *</label>
+                    <input
+                      type="date"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Gender: *</label>
+                    <select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                    onChange={(e) => setFamilyMember(prev => ({ ...prev, idType: e.target.value }))}
+                  >
+                    <option value="">Select ID Type</option>
+                    <option value="national_id">National ID</option>
+                    <option value="passport">Passport</option>
+                    <option value="birth_certificate">Birth Certificate</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>ID Number</label>
+                  <input
+                    type="text"
+                    value={familyMember.idNumber}
+                    onChange={(e) => setFamilyMember(prev => ({ ...prev, idNumber: e.target.value }))}
+                    placeholder="ID number"
+                  />
+                </div>
+              </div>
+              <button type="button" onClick={addFamilyMember} className="add-btn">
+                ➕ Add Family Member
+              </button>
+            </div>
+            
+            {familyMembers.length > 0 && (
+              <div className="family-members-list">
+                <h5>Added Family Members ({familyMembers.length})</h5>
+                {familyMembers.map((member, index) => (
+                  <div key={index} className="family-member-item">
+                    <span>
+                      <strong>{member.name}</strong> - {member.relationship}
+                      {member.idNumber && ` (ID: ${member.idNumber})`}
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={() => removeFamilyMember(index)}
+                      className="remove-btn"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <React.Fragment>
+            <div className="form-section">
+              <h4>📍 Location Information</h4>
+              <p className="location-help" style={{color: '#e74c3c', fontWeight: 'bold'}}>
+                ⚠️ Your registration will be sent to the Kebele you select below
+              </p>
+              
+              <LocationSelector 
+                onLocationChange={handleLocationChange}
+                hideLevels={[]}
+              />
+              
+              {formData.location && formData.location.kebele && (
+                <div className="location-confirmation">
+                  <h5>📍 Selected Location:</h5>
+                  <div className="location-display">
+                    {formData.location.regionName && <span>Region: {formData.location.regionName}</span>}
+                    {formData.location.zoneName && <span>Zone: {formData.location.zoneName}</span>}
+                    {formData.location.woredaName && <span>Woreda: {formData.location.woredaName}</span>}
+                    {formData.location.kebeleName && <span>Kebele: {formData.location.kebeleName}</span>}
+                    <p style={{fontWeight: 'bold', color: '#27ae60'}}>
+                      ✓ Registration will be sent to {formData.location.kebeleName || formData.location.kebele} Kebele
+                    </p>
+                  </div>
+                </div>
+              )}
+                  type="text"
+                  name="houseNumber"
+                  value={formData.houseNumber}
+                  onChange={handleChange}
+                  placeholder="House number"
+                />
+              </div>
+              <div className="form-group">
+                <label>Street:</label>
+                <input
+                  type="text"
+                  name="street"
+                  value={formData.street}
+                  onChange={handleChange}
+                  placeholder="Street name"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Account Information */}
+          <div className="form-section">
+            <h4>🔐 Account Information</h4>
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Password: *</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  placeholder="Minimum 6 characters"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Confirm Password: *</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  placeholder="Re-enter password"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Terms */}
+          <div className="terms-section">
+            <label className="checkbox-label">
+              <input type="checkbox" required />
+              <span>
+                I confirm all information is accurate. False information may result in rejection.
+              </span>
+            </label>
+          </div>
+
+          <button type="submit" disabled={loading} className="auth-btn citizen-btn">
+            {loading ? (
+              <span>
+                <span className="spinner"></span> Submitting...
+              </span>
+            ) : (
+              'Submit Registration to Kebele'
+            )}
+          </button>
+        </form>
+        
+        <div className="auth-links">
+          <p>
+            Already have an account? <Link to="/login">Login here</Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RegisterCitizen;

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Regional Dashboard Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .citizen-card { border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🏛️ Regional Dashboard Test</h1>
+    <p>Testing the regional overview API directly...</p>
+    
+    <div id="debug-info" class="debug">
+        <h3>🔍 Debug Information</h3>
+        <p>API URL: http://localhost:5000/api/auth/regional/overview</p>
+        <p>Token: test-token-regional</p>
+        <p id="status">Loading...</p>
+    </div>
+
+    <div id="citizens-container">
+        <h3>👥 Citizens Data</h3>
+        <div id="citizens-list">Loading citizens...</div>
+    </div>
+
+    <script>
+        async function testRegionalAPI() {
+            const debugDiv = document.getElementById('debug-info');
+            const statusP = document.getElementById('status');
+            const citizensDiv = document.getElementById('citizens-list');
+            
+            try {
+                console.log('🔍 Making API call...');
+                statusP.innerHTML = '📡 Making API call...';
+                
+                const response = await fetch('http://localhost:5000/api/auth/regional/overview', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer test-token-regional',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('📥 Response status:', response.status);
+                statusP.innerHTML = `📥 Response status: ${response.status}`;
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ API Response:', data);
+                    
+                    if (data.status === 'success') {
+                        const citizens = data.data.citizens || [];
+                        const stats = data.data.stats || {};
+                        
+                        statusP.innerHTML = `✅ Success! Found ${citizens.length} citizens`;
+                        debugDiv.className = 'debug success';
+                        
+                        // Display citizens
+                        if (citizens.length === 0) {
+                            citizensDiv.innerHTML = '<p>No citizens found</p>';
+                        } else {
+                            citizensDiv.innerHTML = citizens.map((citizen, index) => `
+                                <div class="citizen-card">
+                                    <h4>${index + 1}. ${citizen.personalInfo?.firstName} ${citizen.personalInfo?.lastName}</h4>
+                                    <p><strong>Status:</strong> ${citizen.status}</p>
+                                    <p><strong>Email:</strong> ${citizen.personalInfo?.email || 'Not provided'}</p>
+                                    <p><strong>Phone:</strong> ${citizen.personalInfo?.phone || 'Not provided'}</p>
+                                    <p><strong>Location:</strong> ${citizen.location?.woredaName || citizen.location?.woreda} → ${citizen.location?.kebeleName || citizen.location?.kebele}</p>
+                                    <p><strong>Registration Date:</strong> ${new Date(citizen.createdAt).toLocaleDateString()}</p>
+                                    <p><strong>Approved At:</strong> ${citizen.approvedAt ? new Date(citizen.approvedAt).toLocaleDateString() : 'Not approved'}</p>
+                                </div>
+                            `).join('');
+                        }
+                        
+                        // Display stats
+                        citizensDiv.innerHTML += `
+                            <div class="debug">
+                                <h4>📈 Statistics</h4>
+                                <p>Total Citizens: ${stats.citizens?.total || 0}</p>
+                                <p>Approved: ${stats.citizens?.approved || 0}</p>
+                                <p>Rejected: ${stats.citizens?.rejected || 0}</p>
+                                <p>Verified: ${stats.citizens?.verified || 0}</p>
+                            </div>
+                        `;
+                        
+                    } else {
+                        statusP.innerHTML = `❌ API Error: ${data.message}`;
+                        debugDiv.className = 'debug error';
+                        citizensDiv.innerHTML = `<p>Error: ${data.message}</p>`;
+                    }
+                } else {
+                    const errorData = await response.json();
+                    console.error('❌ API Error:', errorData);
+                    statusP.innerHTML = `❌ HTTP Error: ${response.status}`;
+                    debugDiv.className = 'debug error';
+                    citizensDiv.innerHTML = `<p>HTTP Error ${response.status}: ${errorData.message || 'Unknown error'}</p>`;
+                }
+                
+            } catch (error) {
+                console.error('❌ Network Error:', error);
+                statusP.innerHTML = `❌ Network Error: ${error.message}`;
+                debugDiv.className = 'debug error';
+                citizensDiv.innerHTML = `<p>Network Error: ${error.message}</p>`;
+            }
+        }
+
+        // Run test when page loads
+        window.onload = testRegionalAPI;
+    </script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+/* Documents Section Styles */
+.documents-section {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.documents-section h5 {
+  color: #495057;
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.document-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  transition: all 0.2s ease;
+}
+
+.document-item:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-color: #007bff;
+}
+
+.document-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.document-type {
+  font-weight: 600;
+  color: #007bff;
+  font-size: 14px;
+}
+
+.document-name {
+  color: #6c757d;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.document-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.view-document-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.view-document-btn:hover {
+  background: #0056b3;
+}
+
+.other-documents {
+  margin-top: 15px;
+}
+
+.other-documents h6 {
+  color: #495057;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.no-documents {
+  padding: 15px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.no-documents p {
+  margin: 5px 0;
+  color: #856404;
+  font-size: 14px;
+}
+
+.no-documents strong {
+  color: #d63384;
+}
+
+.validation-note {
+  margin-top: 10px;
+  font-style: italic;
+  color: #6c757d;
+  font-size: 13px;
+}
+
+/* PDF Preview Styles */
+.pdf-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #e9ecef;
+  border-radius: 4px;
+  color: #495057;
+  font-size: 14px;
+}
+
+.pdf-document {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #e9ecef;
+  border-radius: 4px;
+  color: #495057;
+  font-size: 14px;
+  flex: 1;
+}
+
+/* Required note styles */
+.required-note {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .document-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .document-actions {
+    width: 100%;
+  }
+
+  .view-document-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

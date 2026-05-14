@@ -1,0 +1,121 @@
+.maturity-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.maturity-modal-content {
+    background: white;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.maturity-modal-header {
+    background: #fff5f5;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #fed7d7;
+}
+
+.warning-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.maturity-modal-header h2 {
+    color: #c53030;
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.maturity-modal-body {
+    padding: 24px;
+    color: #4a5568;
+    line-height: 1.6;
+}
+
+.impact-box {
+    background: #f7fafc;
+    border-left: 4px solid #e53e3e;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+
+.impact-box h4 {
+    color: #2d3748;
+    margin-top: 0;
+    font-size: 1rem;
+}
+
+.impact-box ul {
+    margin: 10px 0 0 20px;
+    padding: 0;
+}
+
+.cta-text {
+    font-weight: 500;
+    color: #2b6cb0;
+}
+
+.maturity-modal-footer {
+    padding: 20px;
+    background: #f8fafc;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    border-top: 1px solid #e2e8f0;
+}
+
+.maturity-modal-footer button {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.primary-btn {
+    background: #3182ce;
+    color: white;
+    border: none;
+}
+
+.primary-btn:hover {
+    background: #2b6cb0;
+}
+
+.secondary-btn {
+    background: white;
+    color: #718096;
+    border: 1px solid #e2e8f0;
+}
+
+.secondary-btn:hover {
+    background: #f1f5f9;
+    color: #4a5568;
+}

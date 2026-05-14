@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug</title>
+</head>
+<body>
+    <h1>Authentication Debug</h1>
+    <div id="debug-info"></div>
+    
+    <script>
+        function debugAuth() {
+            const debugDiv = document.getElementById('debug-info');
+            
+            // Check token
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            let html = '<h2>Authentication State</h2>';
+            
+            if (token) {
+                html += '<p>✅ Token found</p>';
+                
+                try {
+                    // Decode JWT token
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    html += '<h3>Token Payload:</h3>';
+                    html += '<pre>' + JSON.stringify(payload, null, 2) + '</pre>';
+                    
+                    html += '<p><strong>User Role:</strong> ' + payload.role + '</p>';
+                    html += '<p><strong>User Location:</strong> ' + JSON.stringify(payload.location) + '</p>';
+                    
+                    // Check if user has zone role
+                    if (payload.role === 'zone' || payload.role === 'zone_representative') {
+                        html += '<p>✅ User has zone role</p>';
+                    } else {
+                        html += '<p>❌ User does NOT have zone role</p>';
+                    }
+                    
+                    // Check if user has zone assignment
+                    if (payload.location && (payload.location.zone || payload.location.zoneName)) {
+                        html += '<p>✅ User is assigned to a zone</p>';
+                    } else {
+                        html += '<p>❌ User is NOT assigned to a zone</p>';
+                    }
+                    
+                } catch (e) {
+                    html += '<p>❌ Invalid token format: ' + e.message + '</p>';
+                }
+            } else {
+                html += '<p>❌ No token found</p>';
+            }
+            
+            if (user) {
+                html += '<h3>User Object:</h3>';
+                html += '<pre>' + JSON.stringify(JSON.parse(user), null, 2) + '</pre>';
+            } else {
+                html += '<p>❌ No user object found</p>';
+            }
+            
+            // Test API calls
+            html += '<h2>API Tests</h2>';
+            html += '<button onclick="testZoneOverview()">Test Zone Overview</button> ';
+            html += '<button onclick="testZoneReport()">Test Zone Report</button>';
+            html += '<div id="api-results"></div>';
+            
+            debugDiv.innerHTML = html;
+        }
+        
+        async function testZoneOverview() {
+            const token = localStorage.getItem('token');
+            const resultsDiv = document.getElementById('api-results');
+            
+            if (!token) {
+                resultsDiv.innerHTML = '<p style="color: red;">❌ No token available</p>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/zone/overview', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                const data = await response.json();
+                
+                let html = '<h3>Zone Overview Response:</h3>';
+                html += '<p><strong>Status:</strong> ' + response.status + '</p>';
+                html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = '<p style="color: red;">❌ Error: ' + error.message + '</p>';
+            }
+        }
+        
+        async function testZoneReport() {
+            const token = localStorage.getItem('token');
+            const resultsDiv = document.getElementById('api-results');
+            
+            if (!token) {
+                resultsDiv.innerHTML = '<p style="color: red;">❌ No token available</p>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/zone/generate-report', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reportType: 'all',
+                        startDate: '2026-03-01',
+                        endDate: '2026-03-06'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                let html = '<h3>Zone Report Response:</h3>';
+                html += '<p><strong>Status:</strong> ' + response.status + '</p>';
+                html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = '<p style="color: red;">❌ Error: ' + error.message + '</p>';
+            }
+        }
+        
+        // Run debug on page load
+        debugAuth();
+    </script>
+</body>
+</html>
