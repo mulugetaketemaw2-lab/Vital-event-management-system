@@ -11,7 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
-  const [API_URL] = useState(`http://${window.location.hostname}:5000/api`);
+  const [API_URL] = useState(process.env.REACT_APP_API_URL || 'https://vital-event-api.onrender.com/api');
   // axios.defaults.baseURL = 'http://localhost:5000/api';
 
   useEffect(() => {
